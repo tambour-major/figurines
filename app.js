@@ -1,183 +1,209 @@
-const container = document.querySelector(".container");
+const scene = document.querySelector("#scene");
 
-let fragments = [];
+const VISIBLE = 30;
 
-const globalMemory = {
-  averageSpan: 4,
-  regimeCounts: {}
+let figurines = [];
+
+const lexiques = {
+
+  corps: [
+    "main",
+    "sang",
+    "yeux",
+    "visage",
+    "nerfs",
+    "corps"
+  ],
+
+  religion: [
+    "dieu",
+    "église",
+    "sorcière",
+    "sorcier",
+    "saint"
+  ],
+
+  amour: [
+    "amour",
+    "désir",
+    "jalouse",
+    "baiser",
+    "aime"
+  ],
+
+  police: [
+    "crime",
+    "colonel",
+    "police",
+    "commissariat",
+    "arme"
+  ],
+
+  mort: [
+    "mort",
+    "mourir",
+    "cadavre",
+    "tombe",
+    "pendu"
+  ]
 };
 
-function classify(line) {
+function tagsDuTexte(texte) {
 
-  const l = line.toLowerCase();
+  const t = texte.toLowerCase();
 
-  if (
-    /(rapport|commission|procès|police|colonel|département|archive)/.test(l)
-  ) {
-    return "bureau";
-  }
+  const tags = [];
 
-  if (
-    /(mort|sang|arme|crime|tuer|cadavre|pistolet)/.test(l)
-  ) {
-    return "violent";
-  }
+  Object.entries(lexiques).forEach(([tag, mots]) => {
 
-  if (
-    /\b(je|moi|me|mon|mes|nerfs|amour|douleur)\b/.test(l)
-  ) {
-    return "intime";
-  }
+    if (
+      mots.some(mot => t.includes(mot))
+    ) {
+      tags.push(tag);
+    }
 
-  return "neutre";
+  });
+
+  return tags;
 }
 
-function spanFromRegime(regime) {
-
-  switch (regime) {
-
-    case "bureau":
-      return 3;
-
-    case "violent":
-      return 5;
-
-    case "intime":
-      return 7;
-
-    default:
-      return 4;
-  }
-}
-
-function makeFragment(line) {
-
-  const regime = classify(line);
+function creerFigurine(texte, id) {
 
   return {
-    text: line,
-    regime,
-    span: spanFromRegime(regime),
-    col: Math.floor(Math.random() * 6) + 1,
-    seed: Math.random() * 1000
+
+    id,
+
+    texte,
+
+    tags: tagsDuTexte(texte),
+
+    age: 0,
+
+    visible: false
   };
 }
 
-function localMemory(fragment, previous) {
+function score(a, b) {
 
-  if (!previous) return fragment;
+  let s = 0;
 
-  fragment.span += (previous.span - fragment.span) * 0.08;
+  a.tags.forEach(tag => {
 
-  return fragment;
+    if (b.tags.includes(tag)) {
+
+      s += 1;
+
+    }
+
+  });
+
+  return s;
 }
 
-function drift(fragment, time) {
+function choisirVoisine(source) {
 
-  const movement =
-    Math.sin(time * 0.00015 + fragment.seed) * 0.15;
+  const candidates =
+    figurines.filter(f => !f.visible);
 
-  fragment.col += movement;
+  if (!candidates.length) return null;
 
-  const maxCol = 13 - Math.round(fragment.span);
-
-  fragment.col = Math.max(
-    1,
-    Math.min(maxCol, fragment.col)
+  candidates.sort((a,b) =>
+    score(source,b) - score(source,a)
   );
 
-  return fragment;
+  return candidates[0];
 }
 
-function updateGlobalMemory() {
+function apparitionInitiale() {
 
-  let total = 0;
+  figurines
+    .sort(() => Math.random() - 0.5)
+    .slice(0, VISIBLE)
+    .forEach(f => {
 
-  const counts = {};
+      f.visible = true;
 
-  fragments.forEach(f => {
+    });
 
-    total += f.span;
+}
 
-    counts[f.regime] =
-      (counts[f.regime] || 0) + 1;
+function afficher() {
+
+  scene.innerHTML = "";
+
+  figurines
+    .filter(f => f.visible)
+    .forEach(f => {
+
+      const div =
+        document.createElement("div");
+
+      const span =
+        3 + (f.tags.length % 4);
+
+      div.className =
+        `fig age${Math.min(f.age,4)}`;
+
+      div.textContent =
+        f.texte;
+
+      div.style.gridColumn =
+        `span ${span}`;
+
+      scene.appendChild(div);
+
+    });
+
+}
+
+function cycle() {
+
+  const visibles =
+    figurines.filter(f => f.visible);
+
+  visibles.forEach(f => {
+
+    f.age++;
+
   });
 
-  globalMemory.averageSpan =
-    total / fragments.length;
+  const mourantes =
+    visibles.filter(f => f.age > 4);
 
-  globalMemory.regimeCounts = counts;
-}
+  mourantes.forEach(f => {
 
-function globalFeedback(fragment) {
+    f.visible = false;
 
-  fragment.span +=
-    (globalMemory.averageSpan - fragment.span) * 0.01;
+    f.age = 0;
 
-  fragment.span =
-    Math.max(2, Math.min(8, fragment.span));
+    const remplaçante =
+      choisirVoisine(f);
 
-  return fragment;
-}
+    if (remplaçante) {
 
-function render() {
+      remplaçante.visible = true;
 
-  container.innerHTML = "";
+    }
 
-  fragments.forEach(fragment => {
-
-    const div = document.createElement("div");
-
-    div.className = "frag";
-
-    div.textContent = fragment.text;
-
-    const col = Math.round(fragment.col);
-    const span = Math.round(fragment.span);
-
-    div.style.gridColumn =
-      `${col} / span ${span}`;
-
-    container.appendChild(div);
-  });
-}
-
-function loop(time) {
-
-  fragments = fragments.map((fragment, i) => {
-
-    fragment =
-      localMemory(fragment, fragments[i - 1]);
-
-    fragment =
-      drift(fragment, time);
-
-    fragment =
-      globalFeedback(fragment);
-
-    return fragment;
   });
 
-  updateGlobalMemory();
-
-  render();
-
-  requestAnimationFrame(loop);
+  afficher();
 }
 
 fetch("texte.txt")
-  .then(response => response.text())
-  .then(text => {
+.then(r => r.text())
+.then(text => {
 
-    fragments = text
-      .split("\n")
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
-      .map(makeFragment);
+  figurines = text
+    .split("\n")
+    .map(t => t.trim())
+    .filter(Boolean)
+    .map(creerFigurine);
 
-    updateGlobalMemory();
+  apparitionInitiale();
 
-    render();
+  afficher();
 
-    requestAnimationFrame(loop);
-  });
+  setInterval(cycle, 8000);
+
+});
