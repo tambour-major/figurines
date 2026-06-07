@@ -1,5 +1,6 @@
 body {
   margin: 0;
+  overflow-x: hidden;
   background: white;
   font-family: monospace;
 }
@@ -8,11 +9,14 @@ body {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
   gap: 8px;
-  padding: 10px;
+  padding: 12px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .frag {
-  transition: all 0.25s ease;
-  padding: 2px 4px;
   border-left: 1px solid #ddd;
+  padding-left: 6px;
+  line-height: 1.35;
+  overflow-wrap: break-word;
 }
