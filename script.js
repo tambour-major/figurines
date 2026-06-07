@@ -1,152 +1,85 @@
-const container = document.getElementById("container");
+let TEXT_URL = "texte.txt";
 
-// -------------------------
-// CORPUS
-// -------------------------
-const corpus = {
-  base: [],
-  didascalies: [],
-  premiere: [],
-  deuxieme: [],
-  personnages: []
+const MAX_FRAGMENTS = 10;
+
+let corpus = {
+  all: [],
+  didascalies: []
 };
 
-// -------------------------
-// MÉMOIRE
-// -------------------------
-const memoire = [];
-const MEMOIRE_MAX = 20;
+function parseText(raw) {
+  // séparation stricte sur lignes vides
+  const blocks = raw
+    .split(/\n\s*\n/g)
+    .map(b => b.trim())
+    .filter(Boolean);
 
-// -------------------------
-// PROBABILITÉS
-// -------------------------
-const proba = {
-  base: 0.45,
-  premiere: 0.2,
-  deuxieme: 0.2,
-  personnage: 0.15
-  // didascalie retirée du flux général (IMPORTANT)
-};
+  const didascalies = [];
+  const all = [];
 
-// -------------------------
-// LIMITES
-// -------------------------
-const MAX_FRAGMENT = 10;
-let compteur = 0;
-let didascalieDejaPlacee = false;
+  for (const b of blocks) {
+    if (b.startsWith("(") || b.includes("[") && b.includes("]")) {
+      didascalies.push(b);
+    } else {
+      all.push(b);
+    }
+  }
 
-// -------------------------
-// CHARGEMENT
-// -------------------------
-async function chargerCorpus() {
-  const [base, didascalies, premiere, deuxieme, personnages] =
-    await Promise.all([
-      fetch("corpus/texte.txt").then(r => r.text()),
-      fetch("corpus/didascalies.txt").then(r => r.text()),
-      fetch("corpus/premiere-personne.txt").then(r => r.text()),
-      fetch("corpus/deuxieme-personne.txt").then(r => r.text()),
-      fetch("corpus/personnages.txt").then(r => r.text())
-    ]);
-
-  corpus.base = base.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
-  corpus.didascalies = didascalies.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
-  corpus.premiere = premiere.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
-  corpus.deuxieme = deuxieme.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
-  corpus.personnages = personnages.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+  return { all, didascalies };
 }
 
-// -------------------------
-// OUTILS
-// -------------------------
-function tirer(arr) {
+function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function ajouterMemoire(f) {
-  memoire.push(f);
-  if (memoire.length > MEMOIRE_MAX) memoire.shift();
+function shuffle(arr) {
+  return arr
+    .map(v => ({ v, r: Math.random() }))
+    .sort((a, b) => a.r - b.r)
+    .map(o => o.v);
 }
 
-function dejaVu(f) {
-  return memoire.includes(f);
+function generate() {
+  const container = document.getElementById("container");
+  container.innerHTML = "";
+
+  if (!corpus.all.length) return;
+
+  const used = new Set();
+
+  // 1 seule didascalie OBLIGATOIRE en premier
+  if (corpus.didascalies.length) {
+    const d = pick(corpus.didascalies);
+    const dEl = document.createElement("div");
+    dEl.className = "didascalie";
+    dEl.textContent = d;
+    container.appendChild(dEl);
+    used.add(d);
+  }
+
+  let pool = shuffle(corpus.all);
+
+  let count = 1; // déjà la didascalie
+
+  for (let i = 0; i < pool.length && count < MAX_FRAGMENTS; i++) {
+    const frag = pool[i];
+
+    if (used.has(frag)) continue;
+
+    const el = document.createElement("div");
+    el.className = "fragment";
+    el.textContent = frag;
+
+    container.appendChild(el);
+
+    used.add(frag);
+    count++;
+  }
 }
 
-// -------------------------
-// CHOIX CORPUS
-// -------------------------
-function choisirCorpus() {
-  const r = Math.random();
-
-  if (r < proba.premiere) return "premiere";
-  if (r < proba.premiere + proba.deuxieme) return "deuxieme";
-  if (r < proba.premiere + proba.deuxieme + proba.personnage) return "personnages";
-
-  return "base";
-}
-
-// -------------------------
-// DIDASCALIE UNIQUE (AU DÉBUT)
-// -------------------------
-function placerDidascalie() {
-  if (didascalieDejaPlacee || corpus.didascalies.length === 0) return;
-
-  const d = tirer(corpus.didascalies);
-
-  const el = document.createElement("div");
-  el.classList.add("fragment", "didascalie");
-  el.textContent = d;
-
-  container.appendChild(el);
-
-  ajouterMemoire(d);
-  didascalieDejaPlacee = true;
-}
-
-// -------------------------
-// GÉNÉRATION
-// -------------------------
-function genererFragment() {
-  let fragment;
-  let tentative = 0;
-
-  do {
-    const type = choisirCorpus();
-    fragment = tirer(corpus[type]);
-    tentative++;
-  } while (dejaVu(fragment) && tentative < 10);
-
-  ajouterMemoire(fragment);
-  return fragment;
-}
-
-// -------------------------
-// AFFICHAGE
-// -------------------------
-function afficher(fragment) {
-  const el = document.createElement("div");
-  el.classList.add("fragment");
-  el.textContent = fragment;
-  container.appendChild(el);
-}
-
-// -------------------------
-// BOUCLE LIMITÉE
-// -------------------------
-function boucle() {
-  if (compteur >= MAX_FRAGMENT) return;
-
-  const fragment = genererFragment();
-  afficher(fragment);
-
-  compteur++;
-
-  setTimeout(boucle, 900);
-}
-
-// -------------------------
-// INIT
-// -------------------------
-chargerCorpus().then(() => {
-  placerDidascalie(); // UNE SEULE, AU DÉBUT
-  boucle();           // 10 fragments max
-});
+fetch(TEXT_URL)
+  .then(r => r.text())
+  .then(text => {
+    corpus = parseText(text);
+    generate();
+  });
