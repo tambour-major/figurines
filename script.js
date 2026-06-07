@@ -3,15 +3,18 @@ console.log("FIGURINES JS OK");
 // CONFIG
 const MAX_FRAGMENTS = 10;
 
-// état global de la génération
 let fragments = [];
 let didascalie = null;
 
-// charger le corpus
+// lancement
 fetch("texte.txt")
   .then(res => {
     console.log("STATUS TEXTE.TXT :", res.status);
-    if (!res.ok) throw new Error("Fichier introuvable ou inaccessible");
+
+    if (!res.ok) {
+      throw new Error("Fichier texte.txt introuvable ou inaccessible");
+    }
+
     return res.text();
   })
   .then(text => {
@@ -27,18 +30,17 @@ fetch("texte.txt")
   });
 
 /**
- * découpe le texte en fragments
- * règle importante : séparation uniquement par ligne vide
+ * découpe par paragraphes (ligne vide = séparation de fragments)
  */
 function parseCorpus(text) {
   return text
-    .split(/\n\s*\n/g) // <-- clé : paragraphes séparés par ligne vide
+    .split(/\n\s*\n/g)
     .map(f => f.trim())
     .filter(Boolean);
 }
 
 /**
- * génère une séquence figée (UNE SEULE FOIS)
+ * génère UNE seule séquence figée
  */
 function generateSequence(corpus) {
   const didascalies = corpus.filter(isDidascalie);
@@ -47,18 +49,21 @@ function generateSequence(corpus) {
   // 1 seule didascalie au début
   didascalie = pickRandom(didascalies);
 
-  fragments = [didascalie];
+  fragments = [];
 
-  // remplir jusqu’à 10 max
-  while (fragments.length < MAX_FRAGMENTS) {
-    const next = weightedPick(autres);
-    if (!next) break;
+  if (didascalie) {
+    fragments.push(didascalie);
+  }
+
+  // compléter jusqu’à 10 fragments max
+  while (fragments.length < MAX_FRAGMENTS && autres.length > 0) {
+    const next = pickRandom(autres);
     fragments.push(next);
   }
 }
 
 /**
- * affichage en 1 colonne fixe
+ * affichage en colonne unique
  */
 function render() {
   const app = document.getElementById("app");
@@ -80,8 +85,8 @@ function render() {
 }
 
 /**
- * heuristique simple pour détecter didascalies
- * (tu pourras raffiner plus tard avec tes corpus)
+ * heuristique simple pour les didascalies
+ * (modifiable selon ton corpus réel)
  */
 function isDidascalie(f) {
   return (
@@ -93,13 +98,8 @@ function isDidascalie(f) {
 }
 
 /**
- * tirage pondéré simple (favorise variété sans boucle infinie)
+ * tirage aléatoire simple
  */
-function weightedPick(arr) {
-  if (!arr.length) return null;
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
 function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
