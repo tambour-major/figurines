@@ -9,14 +9,20 @@ let didascalie = null;
 
 // charger le corpus
 fetch("texte.txt")
-  .then(res => res.text())
+  .then(res => {
+    console.log("STATUS TEXTE.TXT :", res.status);
+    if (!res.ok) throw new Error("Fichier introuvable ou inaccessible");
+    return res.text();
+  })
   .then(text => {
+    console.log("CORPUS CHARGÉ :", text.length);
+
     const corpus = parseCorpus(text);
     generateSequence(corpus);
     render();
   })
   .catch(err => {
-    console.error("Erreur fetch texte.txt :", err);
+    console.error("ERREUR FETCH :", err);
     document.body.innerHTML = "<p>Erreur chargement corpus</p>";
   });
 
