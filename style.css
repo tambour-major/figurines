@@ -1,40 +1,28 @@
-body {
+html, body {
   margin: 0;
-  padding: 20px;
-
-  background: white;
-
+  padding: 0;
+  background: #fff;
+  color: #111;
   font-family: Georgia, serif;
 }
 
-#scene {
+#plateau {
+  width: min(900px, 92vw);
+  margin: 60px auto;
 
   display: grid;
-
   grid-template-columns: repeat(12, 1fr);
-
-  gap: 12px;
-
-  max-width: 1400px;
-
-  margin: auto;
+  gap: 18px;
 }
 
-.fig {
+.fragment {
+  grid-column: span 4;
 
-  border-left: 1px solid #ddd;
+  border: 1px solid #ddd;
+  padding: 14px;
 
-  padding-left: 8px;
+  font-size: 0.95rem;
+  line-height: 1.45;
 
-  line-height: 1.35;
-
-  transition: opacity 1s ease;
-
-  overflow-wrap: break-word;
+  white-space: pre-wrap;
 }
-
-.age0 { opacity: 1; }
-.age1 { opacity: 0.8; }
-.age2 { opacity: 0.6; }
-.age3 { opacity: 0.4; }
-.age4 { opacity: 0.2; }
