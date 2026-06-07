@@ -12,13 +12,13 @@ const corpus = {
 };
 
 // -------------------------
-// MÉMOIRE LOCALE (anti répétition)
+// MÉMOIRE LOCALE
 // -------------------------
 const memoire = [];
 const MEMOIRE_MAX = 20;
 
 // -------------------------
-// PROBABILITÉS (couche 4)
+// PROBABILITÉS
 // -------------------------
 const proba = {
   base: 0.4,
@@ -29,7 +29,7 @@ const proba = {
 };
 
 // -------------------------
-// CHARGEMENT DES FICHIERS
+// CHARGEMENT
 // -------------------------
 async function chargerCorpus() {
   const [base, didascalies, premiere, deuxieme, personnages] =
@@ -55,17 +55,17 @@ function tirer(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function ajouterMemoire(fragment) {
-  memoire.push(fragment);
+function ajouterMemoire(f) {
+  memoire.push(f);
   if (memoire.length > MEMOIRE_MAX) memoire.shift();
 }
 
-function dejaVu(fragment) {
-  return memoire.includes(fragment);
+function dejaVu(f) {
+  return memoire.includes(f);
 }
 
 // -------------------------
-// SÉLECTION PROBABILISTE
+// CHOIX PROBABILISTE
 // -------------------------
 function choisirCorpus() {
   const r = Math.random();
@@ -82,8 +82,8 @@ function choisirCorpus() {
 // GÉNÉRATION
 // -------------------------
 function genererFragment() {
-  let tentative = 0;
   let fragment;
+  let tentative = 0;
 
   do {
     const type = choisirCorpus();
@@ -92,7 +92,6 @@ function genererFragment() {
   } while (dejaVu(fragment) && tentative < 10);
 
   ajouterMemoire(fragment);
-
   return fragment;
 }
 
@@ -109,15 +108,10 @@ function afficher(fragment) {
 
   el.textContent = fragment;
   container.appendChild(el);
-
-  window.scrollTo({
-    top: document.body.scrollHeight,
-    behavior: "smooth"
-  });
 }
 
 // -------------------------
-// BOUCLE GÉNÉRATIVE
+// BOUCLE
 // -------------------------
 let vitesse = 1800;
 
@@ -129,7 +123,7 @@ function boucle() {
 }
 
 // -------------------------
-// INTERACTION (accélération)
+// INTERACTION
 // -------------------------
 document.addEventListener("click", () => {
   vitesse = Math.max(400, vitesse - 150);
@@ -139,5 +133,6 @@ document.addEventListener("click", () => {
 // INIT
 // -------------------------
 chargerCorpus().then(() => {
+  console.log("corpus chargé");
   boucle();
 });
