@@ -12,7 +12,7 @@ const corpus = {
 };
 
 // -------------------------
-// MÉMOIRE LOCALE
+// MÉMOIRE
 // -------------------------
 const memoire = [];
 const MEMOIRE_MAX = 20;
@@ -21,12 +21,19 @@ const MEMOIRE_MAX = 20;
 // PROBABILITÉS
 // -------------------------
 const proba = {
-  base: 0.4,
-  didascalie: 0.2,
-  premiere: 0.15,
-  deuxieme: 0.15,
-  personnage: 0.1
+  base: 0.45,
+  premiere: 0.2,
+  deuxieme: 0.2,
+  personnage: 0.15
+  // didascalie retirée du flux général (IMPORTANT)
 };
+
+// -------------------------
+// LIMITES
+// -------------------------
+const MAX_FRAGMENT = 10;
+let compteur = 0;
+let didascalieDejaPlacee = false;
 
 // -------------------------
 // CHARGEMENT
@@ -41,11 +48,11 @@ async function chargerCorpus() {
       fetch("corpus/personnages.txt").then(r => r.text())
     ]);
 
-  corpus.base = base.split("\n").filter(Boolean);
-  corpus.didascalies = didascalies.split("\n").filter(Boolean);
-  corpus.premiere = premiere.split("\n").filter(Boolean);
-  corpus.deuxieme = deuxieme.split("\n").filter(Boolean);
-  corpus.personnages = personnages.split("\n").filter(Boolean);
+  corpus.base = base.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+  corpus.didascalies = didascalies.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+  corpus.premiere = premiere.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+  corpus.deuxieme = deuxieme.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+  corpus.personnages = personnages.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
 }
 
 // -------------------------
@@ -65,17 +72,34 @@ function dejaVu(f) {
 }
 
 // -------------------------
-// CHOIX PROBABILISTE
+// CHOIX CORPUS
 // -------------------------
 function choisirCorpus() {
   const r = Math.random();
 
-  if (r < proba.didascalie) return "didascalies";
-  if (r < proba.didascalie + proba.premiere) return "premiere";
-  if (r < proba.didascalie + proba.premiere + proba.deuxieme) return "deuxieme";
-  if (r < proba.didascalie + proba.premiere + proba.deuxieme + proba.personnage) return "personnages";
+  if (r < proba.premiere) return "premiere";
+  if (r < proba.premiere + proba.deuxieme) return "deuxieme";
+  if (r < proba.premiere + proba.deuxieme + proba.personnage) return "personnages";
 
   return "base";
+}
+
+// -------------------------
+// DIDASCALIE UNIQUE (AU DÉBUT)
+// -------------------------
+function placerDidascalie() {
+  if (didascalieDejaPlacee || corpus.didascalies.length === 0) return;
+
+  const d = tirer(corpus.didascalies);
+
+  const el = document.createElement("div");
+  el.classList.add("fragment", "didascalie");
+  el.textContent = d;
+
+  container.appendChild(el);
+
+  ajouterMemoire(d);
+  didascalieDejaPlacee = true;
 }
 
 // -------------------------
@@ -101,38 +125,28 @@ function genererFragment() {
 function afficher(fragment) {
   const el = document.createElement("div");
   el.classList.add("fragment");
-
-  if (corpus.didascalies.includes(fragment)) {
-    el.classList.add("didascalie");
-  }
-
   el.textContent = fragment;
   container.appendChild(el);
 }
 
 // -------------------------
-// BOUCLE
+// BOUCLE LIMITÉE
 // -------------------------
-let vitesse = 1800;
-
 function boucle() {
+  if (compteur >= MAX_FRAGMENT) return;
+
   const fragment = genererFragment();
   afficher(fragment);
 
-  setTimeout(boucle, vitesse);
-}
+  compteur++;
 
-// -------------------------
-// INTERACTION
-// -------------------------
-document.addEventListener("click", () => {
-  vitesse = Math.max(400, vitesse - 150);
-});
+  setTimeout(boucle, 900);
+}
 
 // -------------------------
 // INIT
 // -------------------------
 chargerCorpus().then(() => {
-  console.log("corpus chargé");
-  boucle();
+  placerDidascalie(); // UNE SEULE, AU DÉBUT
+  boucle();           // 10 fragments max
 });
