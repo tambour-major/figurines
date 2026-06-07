@@ -1,146 +1,183 @@
 const container = document.querySelector(".container");
 
 let fragments = [];
-let mouse = null;
+
 const globalMemory = {
-  regimeCounts: {},
-  averageSpan: 6,
-  instability: 0
+  averageSpan: 4,
+  regimeCounts: {}
 };
 
-// --------- classification ---------
-
 function classify(line) {
+
   const l = line.toLowerCase();
 
-  if (/(rapport|procès|commission|termium|département|CR)/.test(l)) return "bureaucratique";
-  if (/(arme|pistolet|sang|crime|mort|tue|fusillade)/.test(l)) return "violent";
-  if (/\b(je|me|moi|nerfs|pensée|mal)\b/.test(l)) return "intime";
-  if (/(définit|type|espèce|exemple|selon)/.test(l)) return "encyclo";
-  return "narratif";
+  if (
+    /(rapport|commission|procès|police|colonel|département|archive)/.test(l)
+  ) {
+    return "bureau";
+  }
+
+  if (
+    /(mort|sang|arme|crime|tuer|cadavre|pistolet)/.test(l)
+  ) {
+    return "violent";
+  }
+
+  if (
+    /\b(je|moi|me|mon|mes|nerfs|amour|douleur)\b/.test(l)
+  ) {
+    return "intime";
+  }
+
+  return "neutre";
 }
 
-// --------- fragment ---------
+function spanFromRegime(regime) {
 
-function makeFragment(line, i) {
+  switch (regime) {
+
+    case "bureau":
+      return 3;
+
+    case "violent":
+      return 5;
+
+    case "intime":
+      return 7;
+
+    default:
+      return 4;
+  }
+}
+
+function makeFragment(line) {
+
+  const regime = classify(line);
+
   return {
     text: line,
-    regime: classify(line),
-    col: 6,
-    span: 6,
-    seed: Math.random() * 1000,
-    drift: Math.random() * 0.6
+    regime,
+    span: spanFromRegime(regime),
+    col: Math.floor(Math.random() * 6) + 1,
+    seed: Math.random() * 1000
   };
 }
 
-// --------- mémoire locale ---------
+function localMemory(fragment, previous) {
 
-function memory(f, prev) {
-  if (!prev) return f;
-  f.span += (prev.span - 6) * 0.2;
-  return f;
+  if (!previous) return fragment;
+
+  fragment.span += (previous.span - fragment.span) * 0.08;
+
+  return fragment;
 }
 
-// --------- dérive ---------
+function drift(fragment, time) {
 
-function drift(f, t) {
-  f.col += Math.sin(t * 0.001 + f.seed) * f.drift;
-  f.col = Math.max(1, Math.min(12, f.col));
-  return f;
+  const movement =
+    Math.sin(time * 0.00015 + fragment.seed) * 0.15;
+
+  fragment.col += movement;
+
+  const maxCol = 13 - Math.round(fragment.span);
+
+  fragment.col = Math.max(
+    1,
+    Math.min(maxCol, fragment.col)
+  );
+
+  return fragment;
 }
 
-// --------- interaction ---------
+function updateGlobalMemory() {
 
-window.addEventListener("mousemove", e => {
-  mouse = { x: e.clientX, y: e.clientY };
-});
+  let total = 0;
 
-function interact(f) {
-  if (!mouse) return f;
-
-  const center = mouse.x / window.innerWidth;
-  f.col += (center - 0.5) * 2;
-  f.span *= 0.98 + center * 0.05;
-
-  return f;
-}
-
-// --------- mémoire globale ---------
-
-function globalUpdate() {
   const counts = {};
-  let avg = 0;
 
   fragments.forEach(f => {
-    counts[f.regime] = (counts[f.regime] || 0) + 1;
-    avg += f.span;
+
+    total += f.span;
+
+    counts[f.regime] =
+      (counts[f.regime] || 0) + 1;
   });
 
+  globalMemory.averageSpan =
+    total / fragments.length;
+
   globalMemory.regimeCounts = counts;
-  globalMemory.averageSpan = avg / fragments.length;
 }
 
-// --------- feedback ---------
+function globalFeedback(fragment) {
 
-function feedback(f) {
-  const dominant = Object.entries(globalMemory.regimeCounts)
-    .sort((a,b)=>b[1]-a[1])[0]?.[0];
+  fragment.span +=
+    (globalMemory.averageSpan - fragment.span) * 0.01;
 
-  if (f.regime === dominant) {
-    f.span *= 0.95;
-  }
+  fragment.span =
+    Math.max(2, Math.min(8, fragment.span));
 
-  f.span += (globalMemory.averageSpan - f.span) * 0.02;
-
-  return f;
+  return fragment;
 }
-
-// --------- render ---------
 
 function render() {
+
   container.innerHTML = "";
 
-  fragments.forEach(f => {
-    const div = document.createElement("div");
-    div.className = "frag";
-    div.textContent = f.text;
+  fragments.forEach(fragment => {
 
-    div.style.gridColumn = `${Math.round(f.col)} / span ${Math.max(1, Math.round(f.span))}`;
+    const div = document.createElement("div");
+
+    div.className = "frag";
+
+    div.textContent = fragment.text;
+
+    const col = Math.round(fragment.col);
+    const span = Math.round(fragment.span);
+
+    div.style.gridColumn =
+      `${col} / span ${span}`;
 
     container.appendChild(div);
   });
 }
 
-// --------- loop ---------
+function loop(time) {
 
-function loop(t) {
+  fragments = fragments.map((fragment, i) => {
 
-  fragments = fragments.map((f, i) => {
-    const prev = fragments[i - 1];
+    fragment =
+      localMemory(fragment, fragments[i - 1]);
 
-    f = memory(f, prev);
-    f = drift(f, t);
-    f = interact(f);
-    f = feedback(f);
+    fragment =
+      drift(fragment, time);
 
-    return f;
+    fragment =
+      globalFeedback(fragment);
+
+    return fragment;
   });
 
-  globalUpdate();
+  updateGlobalMemory();
+
   render();
 
   requestAnimationFrame(loop);
 }
 
-// --------- init ---------
-
 fetch("texte.txt")
-  .then(r => r.text())
+  .then(response => response.text())
   .then(text => {
+
     fragments = text
       .split("\n")
-      .filter(Boolean)
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
       .map(makeFragment);
+
+    updateGlobalMemory();
+
+    render();
 
     requestAnimationFrame(loop);
   });
