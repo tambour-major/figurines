@@ -1,148 +1,143 @@
+const container = document.getElementById("container");
+
+// -------------------------
+// CORPUS
+// -------------------------
 const corpus = {
-  texte: [],
+  base: [],
   didascalies: [],
-  personnages: [],
   premiere: [],
-  deuxieme: []
+  deuxieme: [],
+  personnages: []
 };
 
-async function chargerFichier(url) {
-  const res = await fetch(url);
-  const txt = await res.text();
+// -------------------------
+// MÉMOIRE LOCALE (anti répétition)
+// -------------------------
+const memoire = [];
+const MEMOIRE_MAX = 20;
 
-  return txt
-    .split(/\n\s*\n/)
-    .map(s => s.trim())
-    .filter(Boolean);
-}
+// -------------------------
+// PROBABILITÉS (couche 4)
+// -------------------------
+const proba = {
+  base: 0.4,
+  didascalie: 0.2,
+  premiere: 0.15,
+  deuxieme: 0.15,
+  personnage: 0.1
+};
 
+// -------------------------
+// CHARGEMENT DES FICHIERS
+// -------------------------
 async function chargerCorpus() {
-  corpus.texte = await chargerFichier("corpus/texte.txt");
-  corpus.didascalies = await chargerFichier("corpus/didascalies.txt");
-  corpus.personnages = await chargerFichier("corpus/personnages.txt");
-  corpus.premiere = await chargerFichier("corpus/premiere-personne.txt");
-  corpus.deuxieme = await chargerFichier("corpus/deuxieme-personne.txt");
-
-  generer();
-}
-
-function hasard(list) {
-  return list[Math.floor(Math.random() * list.length)];
-}
-
-/* ---------------------------
-   PROBABILITÉS
---------------------------- */
-
-function choixPondere(options) {
-  const total = options.reduce((s, o) => s + o.poids, 0);
-  let r = Math.random() * total;
-
-  for (const o of options) {
-    r -= o.poids;
-    if (r <= 0) return o.valeur;
-  }
-}
-
-/* ---------------------------
-   TYPE DE FIGURINE
---------------------------- */
-
-function typeFigurine(position) {
-
-  if (position === 0) {
-    return choixPondere([
-      { valeur: "didascalie", poids: 6 },
-      { valeur: "personnage", poids: 2 },
-      { valeur: "texte", poids: 3 }
+  const [base, didascalies, premiere, deuxieme, personnages] =
+    await Promise.all([
+      fetch("corpus/texte.txt").then(r => r.text()),
+      fetch("corpus/didascalies.txt").then(r => r.text()),
+      fetch("corpus/premiere-personne.txt").then(r => r.text()),
+      fetch("corpus/deuxieme-personne.txt").then(r => r.text()),
+      fetch("corpus/personnages.txt").then(r => r.text())
     ]);
-  }
 
-  if (position === 1) {
-    return choixPondere([
-      { valeur: "personnage", poids: 3 },
-      { valeur: "premiere", poids: 3 },
-      { valeur: "texte", poids: 2 }
-    ]);
-  }
-
-  if (position === 2) {
-    return choixPondere([
-      { valeur: "premiere", poids: 3 },
-      { valeur: "deuxieme", poids: 3 },
-      { valeur: "texte", poids: 2 }
-    ]);
-  }
-
-  return choixPondere([
-    { valeur: "texte", poids: 5 },
-    { valeur: "personnage", poids: 2 },
-    { valeur: "premiere", poids: 2 },
-    { valeur: "deuxieme", poids: 1 },
-    { valeur: "didascalie", poids: 2 }
-  ]);
+  corpus.base = base.split("\n").filter(Boolean);
+  corpus.didascalies = didascalies.split("\n").filter(Boolean);
+  corpus.premiere = premiere.split("\n").filter(Boolean);
+  corpus.deuxieme = deuxieme.split("\n").filter(Boolean);
+  corpus.personnages = personnages.split("\n").filter(Boolean);
 }
 
-/* ---------------------------
-   FABRIQUE FIGURINE
---------------------------- */
-
-function figurine(type) {
-
-  let txt = "";
-
-  switch (type) {
-
-    case "didascalie":
-      txt = hasard(corpus.didascalies);
-      break;
-
-    case "personnage":
-      txt = hasard(corpus.personnages);
-      break;
-
-    case "premiere":
-      txt = hasard(corpus.premiere);
-      break;
-
-    case "deuxieme":
-      txt = hasard(corpus.deuxieme);
-      break;
-
-    default:
-      txt = hasard(corpus.texte);
-  }
-
-  return { type, txt };
+// -------------------------
+// OUTILS
+// -------------------------
+function tirer(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
-/* ---------------------------
-   GENERATION SCENE
---------------------------- */
+function ajouterMemoire(fragment) {
+  memoire.push(fragment);
+  if (memoire.length > MEMOIRE_MAX) memoire.shift();
+}
 
-function generer() {
+function dejaVu(fragment) {
+  return memoire.includes(fragment);
+}
 
-  const plateau = document.getElementById("plateau");
-  plateau.innerHTML = "";
+// -------------------------
+// SÉLECTION PROBABILISTE
+// -------------------------
+function choisirCorpus() {
+  const r = Math.random();
 
-  const sequence = [];
+  if (r < proba.didascalie) return "didascalies";
+  if (r < proba.didascalie + proba.premiere) return "premiere";
+  if (r < proba.didascalie + proba.premiere + proba.deuxieme) return "deuxieme";
+  if (r < proba.didascalie + proba.premiere + proba.deuxieme + proba.personnage) return "personnages";
 
-  for (let i = 0; i < 10; i++) {
-    sequence.push(figurine(typeFigurine(i)));
+  return "base";
+}
+
+// -------------------------
+// GÉNÉRATION
+// -------------------------
+function genererFragment() {
+  let tentative = 0;
+  let fragment;
+
+  do {
+    const type = choisirCorpus();
+    fragment = tirer(corpus[type]);
+    tentative++;
+  } while (dejaVu(fragment) && tentative < 10);
+
+  ajouterMemoire(fragment);
+
+  return fragment;
+}
+
+// -------------------------
+// AFFICHAGE
+// -------------------------
+function afficher(fragment) {
+  const el = document.createElement("div");
+  el.classList.add("fragment");
+
+  if (corpus.didascalies.includes(fragment)) {
+    el.classList.add("didascalie");
   }
 
-  sequence.forEach(f => {
+  el.textContent = fragment;
+  container.appendChild(el);
 
-    const div = document.createElement("div");
-    div.className = "fragment";
-    div.textContent = f.txt;
-
-    plateau.appendChild(div);
+  window.scrollTo({
+    top: document.body.scrollHeight,
+    behavior: "smooth"
   });
 }
 
-/* ---------------------------
-   INIT
---------------------------- */
+// -------------------------
+// BOUCLE GÉNÉRATIVE
+// -------------------------
+let vitesse = 1800;
 
-chargerCorpus();
+function boucle() {
+  const fragment = genererFragment();
+  afficher(fragment);
+
+  setTimeout(boucle, vitesse);
+}
+
+// -------------------------
+// INTERACTION (accélération)
+// -------------------------
+document.addEventListener("click", () => {
+  vitesse = Math.max(400, vitesse - 150);
+});
+
+// -------------------------
+// INIT
+// -------------------------
+chargerCorpus().then(() => {
+  boucle();
+});
