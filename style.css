@@ -1,0 +1,18 @@
+body {
+  margin: 0;
+  background: white;
+  font-family: monospace;
+}
+
+.container {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 8px;
+  padding: 10px;
+}
+
+.frag {
+  transition: all 0.25s ease;
+  padding: 2px 4px;
+  border-left: 1px solid #ddd;
+}
