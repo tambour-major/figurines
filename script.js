@@ -5,7 +5,7 @@ const MIN_FRAGMENTS    = 7;    // longueur minimale d'une séquence
 const MAX_FRAGMENTS    = 13;   // longueur maximale
 const BRIEF_THRESHOLD  = 50;   // seuil en caractères pour la position de clôture
 const ALTERNANCE       = 0.7;  // tension d'alternance (0 = aucune, 1 = stricte)
-const SCENE_WIDTH      = 62;   // largeur en caractères de la scène ASCII
+const SCENE_WIDTH      = 60;   // largeur en caractères de la scène ASCII
 const SKY_ROWS         = 5;    // lignes de ciel au-dessus du relief max
 // ──────────────────────────────────────────────────────────────
 
