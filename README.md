@@ -1,17 +1,13 @@
-**figurines** est un dispositif de lecture et de dérive pour texte brut.
+# figurines
 
-Le projet prend un fichier texte comme matière première et le transforme en un champ de fragments disposés sur une grille CSS de 12 colonnes. Chaque ligne devient une unité autonome, une sorte de figurine textuelle, soumise à plusieurs forces simples : mémoire locale, dérive, interaction et mémoire globale du système.
+*figurines* est un dispositif de lecture générative pour texte brut.
 
-Le texte n’est pas interprété comme un contenu à lire de façon linéaire, mais comme un ensemble de formes instables. Les fragments se déplacent légèrement, se réorganisent, réagissent à la présence du curseur et à leur environnement immédiat. Certaines régularités émergent, d’autres se dissolvent.
+Le projet prend comme matière première un ensemble de fragments textuels et produit, à chaque chargement de la page, une nouvelle séquence de lecture. Le texte n'est pas abordé comme un récit continu, mais comme une réserve de formes, de voix, de situations et d'énoncés susceptibles d'entrer provisoirement en relation.
 
-Le système repose sur quatre couches :
+Les fragments sont extraits de plusieurs corpus distincts : texte principal, didascalies, personnages, premières personnes et deuxièmes personnes. Un système de probabilités détermine leur apparition et leur agencement. Certaines structures reviennent, d'autres disparaissent. Chaque lecture constitue une configuration singulière du même matériau.
 
-* mémoire locale (relations entre fragments voisins)
-* dérive (oscillations continues dans la grille)
-* interaction utilisateur (influence du curseur)
-* mémoire globale (statistiques dynamiques du corpus)
+Une séquence commence par une didascalie unique qui sert de cadre ou de situation initiale. Elle est suivie d'un nombre limité de fragments tirés du corpus. Le résultat oscille entre montage, dialogue, monologue, note de terrain, scène inachevée ou poème documentaire.
 
-Chaque rechargement produit une configuration légèrement différente, comme si le texte était rejoué plutôt que lu.
+Chaque rechargement produit une nouvelle version du texte. Rien n'est écrit à l'avance. Le dispositif ne cherche pas à raconter une histoire cohérente mais à faire apparaître des voisinages inattendus, des échos, des tensions et des récurrences au sein d'un même fonds textuel.
 
-figurines explore l’idée que le sens n’est pas contenu dans les phrases, mais dans leurs relations temporaires, spatiales et instables.
-
+*figurines* explore l'idée que le sens n'est pas contenu dans les phrases elles-mêmes, mais dans les rapports temporaires qu'elles entretiennent les unes avec les autres.
