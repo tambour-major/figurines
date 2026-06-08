@@ -1,130 +1,78 @@
-console.log("FIGURINES JS OK");
+const app = document.getElementById("app");
 
-// fichiers corpus
-const FILES = {
+const files = {
   texte: "corpus/texte.txt",
+  didascalies: "corpus/didascalies.txt",
   personnages: "corpus/personnages.txt",
   first: "corpus/premiere-personne.txt",
-  second: "corpus/deuxieme-personne.txt",
-  didascalies: "corpus/didascalies.txt"
+  second: "corpus/deuxieme-personne.txt"
 };
 
-const MAX_FRAGMENTS = 10;
+async function loadFile(path) {
+  const res = await fetch(path);
 
-let corpus = {};
-let sequence = [];
+  if (!res.ok) {
+    throw new Error("Erreur fetch: " + path);
+  }
 
-// lancement
-loadAll()
-  .then(buildCorpus)
-  .then(generateSequence)
-  .then(render)
-  .catch(err => {
-    console.error(err);
-    document.body.innerHTML = "<p>Erreur chargement corpus</p>";
-  });
+  const text = await res.text();
 
-/**
- * charge tous les fichiers en parallèle
- */
-function loadAll() {
-  const entries = Object.entries(FILES);
-
-  return Promise.all(
-    entries.map(([key, path]) =>
-      fetch(path)
-        .then(res => {
-          console.log(path, res.status);
-          if (!res.ok) throw new Error("Erreur fetch " + path);
-          return res.text().then(text => [key, text]);
-        })
-    )
-  );
-}
-
-/**
- * transforme en corpus structuré
- */
-function buildCorpus(results) {
-  results.forEach(([key, text]) => {
-    corpus[key] = parse(text);
-  });
-}
-
-/**
- * découpe en fragments (par paragraphes)
- */
-function parse(text) {
   return text
-    .split(/\n\s*\n/g)
-    .map(t => t.trim())
+    .split(/\n\s*\n/)   // fragments séparés par lignes vides
+    .map(s => s.trim())
     .filter(Boolean);
 }
 
-/**
- * génération contrôlée
- */
-function generateSequence() {
-  const didascalie = pick(corpus.didascalies);
-
-  const pool = [
-    ...corpus.texte,
-    ...corpus.personnages,
-    ...corpus.first,
-    ...corpus.second
-  ];
-
-  sequence = [];
-
-  // 1 seule didascalie en premier
-  if (didascalie) {
-    sequence.push({ text: didascalie, type: "didascalie" });
-  }
-
-  // compléter jusqu'à 10
-  while (sequence.length < MAX_FRAGMENTS) {
-    const frag = pick(pool);
-    if (!frag) break;
-
-    sequence.push({ text: frag, type: "normal" });
-  }
-}
-
-/**
- * affichage 1 colonne
- */
-function render() {
-  const app = document.getElementById("app");
-
-  app.style.maxWidth = "700px";
-  app.style.margin = "40px auto";
-  app.style.fontFamily = "serif";
-  app.style.lineHeight = "1.6";
-
-  app.innerHTML = sequence
-    .map((f, i) => {
-      if (i === 0) {
-        return `<p style="font-style: italic;">${escape(f.text)}</p>`;
-      }
-      return `<p>${escape(f.text)}</p>`;
-    })
-    .join("");
-}
-
-/**
- * tirage aléatoire simple
- */
 function pick(arr) {
-  if (!arr || arr.length === 0) return null;
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-/**
- * sécurité HTML
- */
-function escape(str) {
-  return str
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
+function shuffle(arr) {
+  return arr.sort(() => Math.random() - 0.5);
 }
+
+async function init() {
+  try {
+    const [texte, didas, pers, first, second] = await Promise.all([
+      loadFile(files.texte),
+      loadFile(files.didascalies),
+      loadFile(files.personnages),
+      loadFile(files.first),
+      loadFile(files.second)
+    ]);
+
+    app.innerHTML = "";
+
+    // UNE seule didascalie au début
+    const dida = document.createElement("div");
+    dida.className = "didascalie";
+    dida.textContent = pick(didas);
+    app.appendChild(dida);
+
+    const corpus = shuffle(texte);
+
+    let i = 0;
+    const max = 10;
+    const interval = 2500; // 2.5 secondes
+
+    const timer = setInterval(() => {
+      if (i >= max) {
+        clearInterval(timer);
+        return;
+      }
+
+      const el = document.createElement("div");
+      el.className = "fragment";
+      el.textContent = corpus[i];
+      app.appendChild(el);
+
+      i++;
+    }, interval);
+
+  } catch (err) {
+    console.error(err);
+    app.innerHTML = "Erreur chargement corpus";
+  }
+}
+
+init();
