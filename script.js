@@ -1,113 +1,128 @@
 console.log("FIGURINES JS OK");
 
-// CONFIG
+// fichiers corpus
+const FILES = {
+  texte: "corpus/texte.txt",
+  personnages: "corpus/personnages.txt",
+  first: "corpus/premiere-personne.txt",
+  second: "corpus/deuxieme-personne.txt",
+  didascalies: "corpus/didascalies.txt"
+};
+
 const MAX_FRAGMENTS = 10;
 
-let fragments = [];
-let didascalie = null;
+let corpus = {};
+let sequence = [];
 
 // lancement
-fetch("texte.txt")
-  .then(res => {
-    console.log("STATUS TEXTE.TXT :", res.status);
-
-    if (!res.ok) {
-      throw new Error("Fichier texte.txt introuvable ou inaccessible");
-    }
-
-    return res.text();
-  })
-  .then(text => {
-    console.log("CORPUS CHARGÉ :", text.length);
-
-    const corpus = parseCorpus(text);
-    generateSequence(corpus);
-    render();
-  })
+loadAll()
+  .then(buildCorpus)
+  .then(generateSequence)
+  .then(render)
   .catch(err => {
-    console.error("ERREUR FETCH :", err);
+    console.error(err);
     document.body.innerHTML = "<p>Erreur chargement corpus</p>";
   });
 
 /**
- * découpe par paragraphes (ligne vide = séparation de fragments)
+ * charge tous les fichiers en parallèle
  */
-function parseCorpus(text) {
+function loadAll() {
+  const entries = Object.entries(FILES);
+
+  return Promise.all(
+    entries.map(([key, path]) =>
+      fetch(path)
+        .then(res => {
+          console.log(path, res.status);
+          if (!res.ok) throw new Error("Erreur fetch " + path);
+          return res.text().then(text => [key, text]);
+        })
+    )
+  );
+}
+
+/**
+ * transforme en corpus structuré
+ */
+function buildCorpus(results) {
+  results.forEach(([key, text]) => {
+    corpus[key] = parse(text);
+  });
+}
+
+/**
+ * découpe en fragments (par paragraphes)
+ */
+function parse(text) {
   return text
     .split(/\n\s*\n/g)
-    .map(f => f.trim())
+    .map(t => t.trim())
     .filter(Boolean);
 }
 
 /**
- * génère UNE seule séquence figée
+ * génération contrôlée
  */
-function generateSequence(corpus) {
-  const didascalies = corpus.filter(isDidascalie);
-  const autres = corpus.filter(f => !isDidascalie(f));
+function generateSequence() {
+  const didascalie = pick(corpus.didascalies);
 
-  // 1 seule didascalie au début
-  didascalie = pickRandom(didascalies);
+  const pool = [
+    ...corpus.texte,
+    ...corpus.personnages,
+    ...corpus.first,
+    ...corpus.second
+  ];
 
-  fragments = [];
+  sequence = [];
 
+  // 1 seule didascalie en premier
   if (didascalie) {
-    fragments.push(didascalie);
+    sequence.push({ text: didascalie, type: "didascalie" });
   }
 
-  // compléter jusqu’à 10 fragments max
-  while (fragments.length < MAX_FRAGMENTS && autres.length > 0) {
-    const next = pickRandom(autres);
-    fragments.push(next);
+  // compléter jusqu'à 10
+  while (sequence.length < MAX_FRAGMENTS) {
+    const frag = pick(pool);
+    if (!frag) break;
+
+    sequence.push({ text: frag, type: "normal" });
   }
 }
 
 /**
- * affichage en colonne unique
+ * affichage 1 colonne
  */
 function render() {
   const app = document.getElementById("app");
 
-  app.style.display = "block";
   app.style.maxWidth = "700px";
   app.style.margin = "40px auto";
-  app.style.lineHeight = "1.6";
   app.style.fontFamily = "serif";
+  app.style.lineHeight = "1.6";
 
-  app.innerHTML = fragments
+  app.innerHTML = sequence
     .map((f, i) => {
       if (i === 0) {
-        return `<p style="font-style: italic;">${escapeHtml(f)}</p>`;
+        return `<p style="font-style: italic;">${escape(f.text)}</p>`;
       }
-      return `<p>${escapeHtml(f)}</p>`;
+      return `<p>${escape(f.text)}</p>`;
     })
     .join("");
 }
 
 /**
- * heuristique simple pour les didascalies
- * (modifiable selon ton corpus réel)
- */
-function isDidascalie(f) {
-  return (
-    f.startsWith("(") ||
-    f.toLowerCase().includes("procès-verbal") ||
-    f.toLowerCase().includes("note") ||
-    f.toLowerCase().includes("instruction")
-  );
-}
-
-/**
  * tirage aléatoire simple
  */
-function pickRandom(arr) {
+function pick(arr) {
+  if (!arr || arr.length === 0) return null;
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
 /**
  * sécurité HTML
  */
-function escapeHtml(str) {
+function escape(str) {
   return str
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
